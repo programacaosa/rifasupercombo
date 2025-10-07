@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Rifa — 200 Números</title>
+
+<style>
+  :root{
+    --bg:#f5f7fb;
+    --card:#ffffff;
+    --accent:#0b84ff;
+    --sold:#2ecc71;
+    --text:#222;
+    --muted:#666;
+    --danger:#ff4d4f;
+  }
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+    background: linear-gradient(180deg, var(--bg), #eef4ff 60%);
+    color:var(--text);
+    -webkit-font-smoothing:antialiased;
+  }
+
+  header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:1rem;
+    padding:1rem;
+    max-width:1100px;
+    margin:0 auto 1rem;
+  }
+  h1{margin:0;font-size:1.25rem}
+  p.sub{margin:0;color:var(--muted);font-size:0.95rem}
+
+  .controls{
+    display:flex;
+    gap:0.5rem;
+    align-items:center;
+    flex-wrap:wrap;
+  }
+  button, .btn{
+    background:var(--card);
+    border:1px solid #e0e6f0;
+    padding:0.5rem 0.75rem;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:600;
+    box-shadow:0 1px 0 rgba(0,0,0,0.03);
+  }
+  .btn-primary{
+    background:var(--accent);
+    color:white;
+    border-color:transparent;
+  }
+  .btn-danger{background:transparent;border-color:transparent;color:var(--danger);font-weight:700}
+
+  main{
+    max-width:1100px;
+    margin:0 auto;
+    padding:0 1rem 3rem;
+  }
+
+  /* grid de bilhetes */
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(80px,1fr));
+    gap:10px;
+  }
+
+  .ticket{
+    background:var(--card);
+    border-radius:10px;
+    padding:10px;
+    text-align:center;
+    user-select:none;
+    transition:transform .12s ease, box-shadow .12s ease;
+    border:1px solid rgba(10,20,40,0.03);
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    align-items:center;
+    justify-content:center;
+    min-height:72px;
+  }
+  .ticket:hover{transform:translateY(-4px); box-shadow:0 8px 20px rgba(10,20,40,0.06)}
+
+  .ticket .num{
+    font-weight:700;
+    font-size:1.1rem;
+  }
+  .ticket small{color:var(--muted); font-size:0.8rem}
+
+  .ticket.sold{
+    background:linear-gradient(180deg, rgba(46,204,113,0.12), rgba(46,204,113,0.06));
+    border:1px solid rgba(46,204,113,0.18);
+    color:var(--sold);
+  }
+
+  .ticket.winner{
+    box-shadow:0 10px 30px rgba(11,132,255,0.18);
+    border:2px solid rgba(11,132,255,0.2);
+    background:linear-gradient(180deg, rgba(11,132,255,0.06), rgba(11,132,255,0.02));
+  }
+
+  .legend{
+    display:flex;
+    gap:1rem;
+    align-items:center;
+    margin:0.75rem 0 1.25rem;
+    flex-wrap:wrap;
+  }
+  .swatch{display:flex;gap:.4rem;align-items:center;color:var(--muted);font-size:0.95rem}
+  .dot{width:14px;height:14px;border-radius:3px;border:1px solid rgba(0,0,0,0.06)}
+
+  .dot.available{background:transparent}
+  .dot.sold{background:var(--sold)}
+  .dot.winner{background:var(--accent)}
+
+  footer{max-width:1100px;margin:1.2rem auto 3rem;padding:0 1rem;color:var(--muted);font-size:0.9rem}
+
+  /* modal simples */
+  .modal{
+    position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    background:rgba(10,15,30,0.35); visibility:hidden;opacity:0;transform:scale(1.02);
+    transition:opacity .15s ease, visibility .15s, transform .15s;
+  }
+  .modal.show{visibility:visible;opacity:1;transform:scale(1)}
+  .modal .card{
+    background:var(--card);padding:1.25rem;border-radius:12px;min-width:280px;max-width:90%;
+    text-align:center;box-shadow:0 12px 40px rgba(10,20,40,0.12);
+  }
+  .winner-num{font-size:2.25rem;font-weight:800;margin:0.25rem 0}
+  .muted-small{color:var(--muted);font-size:0.95rem}
+
+  /* responsividade */
+  @media (max-width:420px){
+    .grid{grid-template-columns:repeat(3,1fr)}
+    .ticket{min-height:64px;padding:8px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Rifa — 200 números</h1>
+    <p class="sub">Clique em um número para marcar como <strong>vendido</strong>. Use o sorteio para escolher um vencedor entre os disponíveis.</p>
+  </div>
+
+  <div class="controls">
+    <button id="resetBtn" title="Desmarcar todos" class="btn">Limpar vendidos</button>
+    <button id="drawBtn" class="btn btn-primary">Sortear vencedor</button>
+    <button id="drawAnyBtn" class="btn" title="Sortear entre todos (incluindo vendidos)">Sortear (todos)</button>
+    <button id="exportBtn" class="btn" title="Copiar lista de vendidos">Copiar vendidos</button>
+  </div>
+</header>
+
+<main>
+  <div class="legend">
+    <span class="swatch"><span class="dot available" style="border:1px solid rgba(0,0,0,.06)"></span> Disponível</span>
+    <span class="swatch"><span class="dot sold"></span> Vendido</span>
+    <span class="swatch"><span class="dot winner"></span> Vencedor</span>
+  </div>
+
+  <div id="grid" class="grid" aria-live="polite"></div>
+</main>
+
+<footer>
+  <div>Rifa gerada com código simples — 200 números (1 a 200).</div>
+</footer>
+
+<!-- modal -->
+<div id="modal" class="modal" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="card">
+    <div id="modalClose" style="text-align:right">
+      <button id="closeModal" class="btn" aria-label="Fechar">Fechar</button>
+    </div>
+    <div style="padding:0 0.5rem 0.5rem;">
+      <div class="muted-small">Vencedor</div>
+      <div id="winnerNum" class="winner-num">--</div>
+      <div id="winnerInfo" class="muted-small"></div>
+      <div style="margin-top:0.75rem">
+        <button id="confirmWinnerBtn" class="btn btn-primary">Confirmar e marcar como vendido</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Config
+  const TOTAL = 200;
+  const grid = document.getElementById('grid');
+  const modal = document.getElementById('modal');
+  const winnerNumEl = document.getElementById('winnerNum');
+  const winnerInfo = document.getElementById('winnerInfo');
+  const confirmWinnerBtn = document.getElementById('confirmWinnerBtn');
+
+  // Mantém estado em memória (e localStorage opcional)
+  let tickets = []; // {num:1, sold:false}
+
+  // carregar do localStorage se existir
+  function loadState(){
+    const raw = localStorage.getItem('rifa_vendidos_v1');
+    if(raw){
+      try{
+        const parsed = JSON.parse(raw);
+        if(Array.isArray(parsed) && parsed.length === TOTAL){
+          tickets = parsed;
+          return;
+        }
+      }catch(e){}
+    }
+    // criar novo
+    tickets = Array.from({length:TOTAL}, (_,i)=>({num:i+1, sold:false}));
+  }
+
+  function saveState(){
+    localStorage.setItem('rifa_vendidos_v1', JSON.stringify(tickets));
+  }
+
+  function render(){
+    grid.innerHTML = '';
+    for(const t of tickets){
+      const el = document.createElement('button');
+      el.className = 'ticket' + (t.sold ? ' sold' : '');
+      el.type = 'button';
+      el.setAttribute('data-num', t.num);
+      el.innerHTML = `<div class="num">${t.num}</div><small>${t.sold ? 'VENDIDO' : 'DISPONÍVEL'}</small>`;
+      el.addEventListener('click', () => toggleSold(t.num));
+      grid.appendChild(el);
+    }
+  }
+
+  function toggleSold(num){
+    const t = tickets[num-1];
+    t.sold = !t.sold;
+    saveState();
+    render();
+  }
+
+  // reset vendidos
+  document.getElementById('resetBtn').addEventListener('click', ()=>{
+    if(!confirm('Deseja desmarcar TODOS os vendidos?')) return;
+    tickets.forEach(t=>t.sold=false);
+    saveState();
+    render();
+  });
+
+  // copiar lista vendidos
+  document.getElementById('exportBtn').addEventListener('click', ()=>{
+    const vendidos = tickets.filter(t=>t.sold).map(t=>t.num);
+    const text = vendidos.length ? vendidos.join(', ') : 'Nenhum vendido';
+    navigator.clipboard?.writeText(text).then(()=> alert('Lista copiada: ' + text));
+  });
+
+  // sorteio entre disponíveis
+  document.getElementById('drawBtn').addEventListener('click', ()=>{
+    const available = tickets.filter(t=>!t.sold).map(t=>t.num);
+    if(available.length === 0){
+      alert('Nenhum número disponível para sortear.');
+      return;
+    }
+    const pick = available[Math.floor(Math.random()*available.length)];
+    showWinner(pick, false);
+  });
+
+  // sorteio entre todos (útil se quiser ignorar marcação)
+  document.getElementById('drawAnyBtn').addEventListener('click', ()=>{
+    const pick = tickets[Math.floor(Math.random()*tickets.length)].num;
+    showWinner(pick, true);
+  });
+
+  // mostrar modal vencedor
+  let currentPick = null;
+  let pickedFromAll = false;
+  function showWinner(num, fromAll){
+    currentPick = num;
+    pickedFromAll = !!fromAll;
+    // limpar highlights anteriores
+    document.querySelectorAll('.ticket.winner').forEach(el => el.classList.remove('winner'));
+    const tile = document.querySelector(`.ticket[data-num="${num}"]`);
+    if(tile) tile.classList.add('winner');
+    winnerNumEl.textContent = num;
+    winnerInfo.textContent = fromAll ? 'Sorteado entre TODOS os números.' : 'Sorteado entre os números DISPONÍVEIS.';
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden','false');
+  }
+
+  // fechar modal
+  function closeModal(){
+    modal.classList.remove('show');
+    modal.setAttribute('aria-hidden','true');
+    document.querySelectorAll('.ticket.winner').forEach(el => el.classList.remove('winner'));
+    currentPick = null;
+  }
+  document.getElementById('closeModal').addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => { if(e.target === modal) closeModal(); });
+
+  // confirmar vencedor e marcar como vendido
+  confirmWinnerBtn.addEventListener('click', ()=>{
+    if(currentPick == null) return;
+    const t = tickets[currentPick-1];
+    t.sold = true;
+    saveState();
+    render();
+    closeModal();
+    alert('Número ' + currentPick + ' marcado como VENDIDO e confirmado como vencedor!');
+  });
+
+  // inicialização
+  loadState();
+  render();
+
+  // teclas úteis
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape') closeModal();
+  });
+
+</script>
+
+</body>
+</html>
